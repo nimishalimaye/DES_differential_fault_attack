@@ -47,6 +47,7 @@ int main()
     printtext(out_fault16);
 	xor_r16(out, out_fault16, delta_r16); //xors the correct and faulty ciphertexts
 	p_inv(delta_r16, p_inv_r16); //finds inv permutation of delta_r16
+	key_brute(bruteforce_key);
 	rhs(out, out_fault16, bruteforce_key, rhs_xor);
 
 	//DECRYPTION//

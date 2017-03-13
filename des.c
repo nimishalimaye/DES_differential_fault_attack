@@ -301,7 +301,28 @@ void p_inv(uchar in[], uchar out[]) {
 	p_inv_sbox(state[1], state_out[1]);
 	InvIP(state_out, out);
 }
+//Brute-force key//
+void key_brute(uchar key[])
+{
+	//uchar key[6];
+	int value;
+
+	for (int i = 0; i<16777215; i++)
+	{
+		value = i;
+		for (int j = 5; j >= 0; j--)
+		{
+			key[j] = value % 256;
+			value = value / 256;
+		}
+
+		for (int k = 0; k < 6; k++)
+			printf("%02x ", key[k]);
+		printf("\n");
+	}
+}
 //RHS SBOX(EXP(L16)^K)//
+
 uint rhs_s_e_k(uint state, uchar key[])
 {
 	uchar lrgstate[6], i;
@@ -346,7 +367,7 @@ uint rhs_s_e_k(uint state, uchar key[])
 }
 
 //RHS of equation 3.2//
-void rhs(uchar in_c, uchar in_e, uchar key[][6], uchar rhs_out) {
+void rhs(uchar in_c, uchar in_e, uchar key[], uchar rhs_out) {
 	uint state_c[2], state_e[2],idx, t, state_rhs[2];
 
 	IP(state_c, in_c);

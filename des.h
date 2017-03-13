@@ -30,6 +30,7 @@ void des_crypt(uchar in[], uchar out[], uchar key[][6]);
 void des_fault16_crypt(uchar in[], uchar out[], uchar key[][6]);
 void xor_r16(uchar in1[], uchar in2[], uchar delta_r16[]);
 void p_inv(uchar in[], uchar out[]);
-void rhs(uchar in_c, uchar in_e, uchar key[][6], uchar rhs_out);
-#endif /* des_h */
-
+void rhs(uchar in_c, uchar in_e, uchar key[], uchar rhs_out);
+void key_brute(uchar key[]);
+#endif 
+/* des_h */
