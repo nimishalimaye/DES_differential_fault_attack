@@ -4,23 +4,17 @@
 ** Copyright/Restrictions: GNU GPL
 ** Disclaimer: This code is presented "as is" without any garuentees; said author holds
                liability for no problems rendered by the use of this code.
-** Details: This code is the implementation of the AES algorithm, as specified by the
+** Details: This code is the implementation of the DES algorithm, as specified by the
             NIST in in publication FIPS PUB 197, availible on the NIST website at
             http://csrc.nist.gov/publications/fips/fips46-3/fips46-3.pdf .
+
+** DES-Fault Attack
+** Author: Nimisha Limaye (nsl278@nyu.edu), Ashik Poojari (ap4613@nyu.edu)
+** Details: This code is the implementation of differential fault analysis of DES algorithm as explained in Fault Analysis in
+			Cryptography- chapter 3.
 ******************************************/
 
 #include "des.h"
-
-#define ENCRYPT 1
-#define DECRYPT 0
-
-// Obtain bit "b" from the left and shift it "c" places from the right
-#define BITNUM(a,b,c) (((a[(b)/8] >> (7 - (b%8))) & 0x01) << (c))
-#define BITNUMINTR(a,b,c) ((((a) >> (31 - (b))) & 0x00000001) << (c))
-#define BITNUMINTL(a,b,c) ((((a) << (b)) & 0x80000000) >> (c))
-// This macro converts a 6 bit block with the S-Box row defined as the first and last
-// bits to a 6 bit block with the row defined by the first two bits.
-#define SBOXBIT(a) (((a) & 0x20) | (((a) & 0x1f) >> 1) | (((a) & 0x01) << 4))
 
 uchar sbox1[64] = {
    14,  4,  13,  1,   2, 15,  11,  8,   3, 10,   6, 12,   5,  9,   0,  7,
@@ -113,7 +107,7 @@ void key_schedule(uchar key[], uchar schedule[][6], uint mode)
 }
 
 // Initial (Inv)Permutation step
-void IP(uint state[], uchar in[])
+void IP(uint state[], uchar in[]) //state[0] is left and state[1] is right
 {
    state[0] = BITNUM(in,57,31) | BITNUM(in,49,30) | BITNUM(in,41,29) | BITNUM(in,33,28) |
               BITNUM(in,25,27) | BITNUM(in,17,26) | BITNUM(in,9,25) | BITNUM(in,1,24) |
@@ -259,7 +253,7 @@ void des_fault16_crypt(uchar in[], uchar out[], uchar key[][6])
         state[0] = t;
     }
     // Fault attack at 16th round --ashikpoojari
-    state[1]= state[1] ^ 0x01010101;       // Fault at position 0,7,15,23
+    state[1]= state[1] ^ 0x00808081;       // Fault at position 0,7,15,23
     state[0] = f(state[1],key[15]) ^ state[0];
     
     // Inverse IP
@@ -267,6 +261,104 @@ void des_fault16_crypt(uchar in[], uchar out[], uchar key[][6])
 }
 // End of DES Fault Attack    ---ashikpoojari
 
+
+
+// EXOR Function for correct and erroneous ciphertexts//
+void xor_r16(uchar in1[], uchar in2[], uchar delta_r16[]) {
+	uint state[2],state1[2], state_out[2], idx, t;
+
+	IP(state, in1);
+	IP(state1, in2);
+
+	// Loop 16 times, perform the final loop manually as it doesn't switch sides
+	
+	state_out[1] = state[1] ^ state1[1]; //right
+	state_out[0] = state[0] ^ state1[0]; //left
+	InvIP(state_out, delta_r16);
+
+}
+
+// P inv table for delta_r16 function//
+void p_inv_sbox(uint state, uint state_out) {
+
+	state_out = BITNUMINTL(state, 8, 0) | BITNUMINTL(state, 16, 1) | BITNUMINTL(state, 22, 2) |
+		BITNUMINTL(state, 30, 3) | BITNUMINTL(state, 12, 4) | BITNUMINTL(state, 27, 5) |
+		BITNUMINTL(state, 1, 6) | BITNUMINTL(state, 17, 7) | BITNUMINTL(state, 23, 8) |
+		BITNUMINTL(state, 15, 9) | BITNUMINTL(state, 29, 10) | BITNUMINTL(state, 5, 11) |
+		BITNUMINTL(state, 25, 12) | BITNUMINTL(state, 19, 13) | BITNUMINTL(state, 9, 14) |
+		BITNUMINTL(state, 0, 15) | BITNUMINTL(state, 7, 16) | BITNUMINTL(state, 13, 17) |
+		BITNUMINTL(state, 24, 18) | BITNUMINTL(state, 2, 19) | BITNUMINTL(state, 3, 20) |
+		BITNUMINTL(state, 28, 21) | BITNUMINTL(state, 10, 22) | BITNUMINTL(state, 18, 23) |
+		BITNUMINTL(state, 31, 24) | BITNUMINTL(state, 11, 25) | BITNUMINTL(state, 21, 26) |
+		BITNUMINTL(state, 6, 27) | BITNUMINTL(state, 4, 28) | BITNUMINTL(state, 26, 29) |
+		BITNUMINTL(state, 14, 30) | BITNUMINTL(state, 20, 31);
+}
+
+void p_inv(uchar in[], uchar out[]) {
+	uint state[2], state_out[2], idx, t;
+
+	IP(state, in);
+	p_inv_sbox(state[1], state_out[1]);
+	InvIP(state_out, out);
+}
+//RHS SBOX(EXP(L16)^K)//
+uint rhs_s_e_k(uint state, uchar key[])
+{
+	uchar lrgstate[6], i;
+	uint t1, t2;
+
+	// Expantion Permutation
+	t1 = BITNUMINTL(state, 31, 0) | ((state & 0xf0000000) >> 1) | BITNUMINTL(state, 4, 5) |
+		BITNUMINTL(state, 3, 6) | ((state & 0x0f000000) >> 3) | BITNUMINTL(state, 8, 11) |
+		BITNUMINTL(state, 7, 12) | ((state & 0x00f00000) >> 5) | BITNUMINTL(state, 12, 17) |
+		BITNUMINTL(state, 11, 18) | ((state & 0x000f0000) >> 7) | BITNUMINTL(state, 16, 23);
+
+	t2 = BITNUMINTL(state, 15, 0) | ((state & 0x0000f000) << 15) | BITNUMINTL(state, 20, 5) |
+		BITNUMINTL(state, 19, 6) | ((state & 0x00000f00) << 13) | BITNUMINTL(state, 24, 11) |
+		BITNUMINTL(state, 23, 12) | ((state & 0x000000f0) << 11) | BITNUMINTL(state, 28, 17) |
+		BITNUMINTL(state, 27, 18) | ((state & 0x0000000f) << 9) | BITNUMINTL(state, 0, 23);
+
+	lrgstate[0] = (t1 >> 24) & 0x000000ff;
+	lrgstate[1] = (t1 >> 16) & 0x000000ff;
+	lrgstate[2] = (t1 >> 8) & 0x000000ff;
+	lrgstate[3] = (t2 >> 24) & 0x000000ff;
+	lrgstate[4] = (t2 >> 16) & 0x000000ff;
+	lrgstate[5] = (t2 >> 8) & 0x000000ff;
+
+	// Key XOR
+	lrgstate[0] ^= key[0];
+	lrgstate[1] ^= key[1];
+	lrgstate[2] ^= key[2];
+	lrgstate[3] ^= key[3];
+	lrgstate[4] ^= key[4];
+	lrgstate[5] ^= key[5];
+
+	// S-Box Permutation
+	state = (sbox1[SBOXBIT(lrgstate[0] >> 2)] << 28) |
+		(sbox2[SBOXBIT(((lrgstate[0] & 0x03) << 4) | (lrgstate[1] >> 4))] << 24) |
+		(sbox3[SBOXBIT(((lrgstate[1] & 0x0f) << 2) | (lrgstate[2] >> 6))] << 20) |
+		(sbox4[SBOXBIT(lrgstate[2] & 0x3f)] << 16) |
+		(sbox5[SBOXBIT(lrgstate[3] >> 2)] << 12) |
+		(sbox6[SBOXBIT(((lrgstate[3] & 0x03) << 4) | (lrgstate[4] >> 4))] << 8) |
+		(sbox7[SBOXBIT(((lrgstate[4] & 0x0f) << 2) | (lrgstate[5] >> 6))] << 4) |
+		sbox8[SBOXBIT(lrgstate[5] & 0x3f)];
+	return(state);
+}
+
+//RHS of equation 3.2//
+void rhs(uchar in_c, uchar in_e, uchar key[][6], uchar rhs_out) {
+	uint state_c[2], state_e[2],idx, t, state_rhs[2];
+
+	IP(state_c, in_c);
+	IP(state_e, in_e);
+	// Loop 16 times, perform the final loop manually as it doesn't switch sides
+	for (idx = 0; idx < 15; ++idx) {
+		state_rhs[1] = rhs_s_e_k(state_c[0], key[idx]) ^ rhs_s_e_k(state_e[0], key[idx]);
+	}
+	// Inverse IP
+	InvIP(state_rhs, rhs_out);
+
+}
 /**************************************
              3DES functions
 **************************************/

@@ -36,15 +36,21 @@ int main()
     uchar out[8],out_fault16[8];
     uchar schedule[16][6];
     uint state[2];
-    
-    key_schedule(key1,schedule,'ENCRYPT');
+	uchar delta_r16[8], p_inv_r16[8], bruteforce_key[8], rhs_xor[8];
+	//ENCRYPTION//
+    key_schedule(key1,schedule,ENCRYPT);
     des_crypt(text1,out,schedule);
     printtext(out);
-    
+
+    //FAULT ATTACK//
     des_fault16_crypt(text1,out_fault16,schedule);
     printtext(out_fault16);
-    
-    key_schedule(key1,schedule,'DECRYPT');
+	xor_r16(out, out_fault16, delta_r16); //xors the correct and faulty ciphertexts
+	p_inv(delta_r16, p_inv_r16); //finds inv permutation of delta_r16
+	rhs(out, out_fault16, bruteforce_key, rhs_xor);
+
+	//DECRYPTION//
+    key_schedule(key1,schedule,DECRYPT);
     des_crypt(out,text1,schedule);
     printtext(text1);
     
