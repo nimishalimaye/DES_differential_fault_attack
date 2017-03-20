@@ -203,7 +203,7 @@ void des_crypt(uchar in[], uchar out[], uchar key[][6])
     printf("L: %x   R: %x\n",state[1],state[0]);
     printf("keyin des--->");
     for(int i=0;i<6;i++)
-        printf("%x",key[15][i]);
+        printf("%02x",key[15][i]);
     printf("\n");
    // Inverse IP
    InvIP(state,out);
@@ -279,7 +279,7 @@ uint rhs_s_e_k(uint state, uchar key[])
     
     printf("keyin rshe--->");
     for(int i=0;i<6;i++)
-        printf("%x",key[i]);
+        printf("%02x",key[i]);
     printf("\n");
     return state;
 }

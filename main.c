@@ -80,7 +80,7 @@ int main()
 
 uchar delta_r(uchar text[],uchar schedule[][6],uchar key_hack[])
 {
-    uchar out[8],out_fault16[8],key_stat;
+    uchar out[8],out_fault16[8],key_stat=0;
     uchar delta_i[8],delta_out[8];
     
     des_crypt(text,out,schedule);
@@ -89,13 +89,14 @@ uchar delta_r(uchar text[],uchar schedule[][6],uchar key_hack[])
     des_fault16_crypt(text,out_fault16,schedule);
     printf("out_e: ");
     printtext(out_fault16);
-    
-    for (int i=0; i < 8; i++)
-    {
-        delta_i[i] = out[i] ^ out_fault16[i];
-    }
-    
-    p_inv(delta_i,delta_out);
+    uchar key_f={0,0,0,0,0,0,0,0};
+    key_hack=key_f;
+//    for (int i=0; i < 8; i++)
+//    {
+//        delta_i[i] = out[i] ^ out_fault16[i];
+//    }
+//    
+//    p_inv(delta_i,delta_out);
 //    printf("%d,%d\n",NOS_ones(delta_i), NOS_ones(delta_out));
 //    printf("delta_r: ");
 //    printtext(delta_i);
@@ -103,33 +104,34 @@ uchar delta_r(uchar text[],uchar schedule[][6],uchar key_hack[])
 //    printtext(delta_out);
 //    key_stat=key_brute(out,out_fault16,delta_out,key_hack);
     
-// testing zone
-    uint state_c[2],state_e[2];
-    IP(state_c,out);
-    IP(state_e,out_fault16);
-
-    uchar keys[6]={0x42,0xea,0x00,0x00,0x00,0xff};
-    
-//    printf("L :%x, Le :%x\n",(rhs_s_e_k(state_c[1], schedule[15])),(rhs_s_e_k(state_e[1], schedule[15])));
-    printf("del_l :%x\n",(rhs_s_e_k(state_c[1],keys))^(rhs_s_e_k(state_e[1], keys)));
-    printf("pinverseof: %x",p_inv_sbox(state_c[0]^state_e[0]));
-    
-    printf("schedule--->");
-    for(int i=0;i<6;i++)
-        printf("%02x",schedule[15][i]);
-    printf("\n");
-    
-    printf("keys--->");
-    for(int i=0;i<6;i++)
-        printf("%02x",keys[i]);
-    printf("\n");
+    keybrute(out,out_fault16);
     
     return key_stat;
     
 }
 
-
-
+void keybrute(uchar in_c[], uchar in_e[])
+{
+    // testing zone
+    uint state_c[2],state_e[2], delta;
+    IP(state_c,in_c);
+    IP(state_e,in_e);
+    
+    uchar key8[8]={0x10,0x2e,0x2a,0x0c,0x01,0x36,0x04,0x09},key[6];
+    
+    map8to6(key8,key);
+    
+    //    printf("L :%x, Le :%x\n",(rhs_s_e_k(state_c[1], schedule[15])),(rhs_s_e_k(state_e[1], schedule[15])));
+    printf("del_l :%x\n",(rhs_s_e_k(state_c[1],key))^(rhs_s_e_k(state_e[1], key)));
+    printf("pinverseof: %x",p_inv_sbox(state_c[0]^state_e[0]));
+    delta = p_inv_sbox(state_c[0]^state_e[0]) ^ ((rhs_s_e_k(state_c[1],key))^(rhs_s_e_k(state_e[1], key)));
+    printf("delta :%x\n",delta);
+    printf("keys--->");
+    for(int i=0;i<6;i++)
+        printf("%02x",key[i]);
+    printf("\n");
+    
+}
 
 // P inv table for delta_r16 function//
 uint p_inv_sbox(uint statex)
@@ -210,7 +212,7 @@ int NOS_ones(uchar x[])
 
 uchar key_brute(uchar in_c[], uchar in_e[], uchar delta_out[],uchar key_final[])
 {
-    uchar key[6],key_stat=0,key_hack[8][16],pointer[8]={0,0,0,0,0,0,0,0},key8[8];
+    uchar key[6],key_stat=0,key_hack[8][16],pointer[8]={0,0,0,0,0,0,0,0},key8[8]={0x10,0x2e,0x2a,0x0c,0x01,0x36,0x04,0x09};
     int key_notfound=1,null_val=0;
     int value,atleastfour;
     int i=0,z=0;
@@ -229,12 +231,17 @@ uchar key_brute(uchar in_c[], uchar in_e[], uchar delta_out[],uchar key_final[])
     
      while(key_notfound)
     {
-        for(int j=7; j>=0; j--)
-        {
-            key8[j]= value;
-        }
+//        for(int j=7; j>=0; j--)
+//        {
+//            key8[j]= value;
+//        }
 //        printtext(key8);
+
         map8to6(key8,key);
+        printf("keys in brute--->");
+        for(int i=0;i<6;i++)
+            printf("%02x",key[i]);
+        printf("\n");
         rhs(in_c,in_e,key,rhs_out);
 //        uint f(uint state, uchar key[])
         for(int k=0;k<8;k++)
@@ -248,10 +255,10 @@ uchar key_brute(uchar in_c[], uchar in_e[], uchar delta_out[],uchar key_final[])
         
 
         
-//        printf("xor:   ");
-//        printtext(xor_lhs);
-//        printf("rhs_out:");
-//        printtext(rhs_out);
+        printf("xor:   ");
+        printtext(xor_lhs);
+        printf("rhs_out:");
+        printtext(rhs_out);
         for(int p=0; p<8; p++)
         {
             z=(p/2+4);
@@ -345,6 +352,7 @@ void map8to6(uchar key8[],uchar key[])
     key[3]=(key8[4] << 2) | (key8[5] >>4);
     key[4]=(key8[5] << 4) | (key8[6] >>2);
     key[5]=(key8[6] << 6) | (key8[7]);
+
 }
 void disp6to8(uchar key[])
 {
@@ -362,7 +370,7 @@ void disp6to8(uchar key[])
     printf("Key_8:");
     for(int i=0;i<8;i++)
     {
-        printf("%x\t",key8[i]);
+        printf("%02x",key8[i]);
     }
     printf("\n");
 }

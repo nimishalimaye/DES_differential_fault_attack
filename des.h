@@ -45,5 +45,6 @@ void map8to6(uchar key8[],uchar key[]);
 void display_keys(uchar key[][16]);
 uint f(uint state, uchar key[]);
 void disp6to8(uchar key[]);
+void keybrute(uchar in_c[], uchar in_e[]);
 #endif /* des_h */
 
