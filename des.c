@@ -198,19 +198,19 @@ void des_crypt(uchar in[], uchar out[], uchar key[][6])
       state[0] = t;
    }
    state[0] = f(state[1],key[15]) ^ state[0];
-    printf("Des correct-------------------------------------\n");
-    printf("f(): %x\n",f(state[1],key[15]));
-    printf("L: %x   R: %x\n",state[1],state[0]);
-    printf("keyin des--->");
-    for(int i=0;i<6;i++)
-        printf("%02x",key[15][i]);
-    printf("\n");
+//    printf("Des correct-------------------------------------\n");
+//    printf("f(): %x\n",f(state[1],key[15]));
+//    printf("L: %x   R: %x\n",state[1],state[0]);
+//    printf("keyin des--->");
+//    for(int i=0;i<6;i++)
+//        printf("%02x",key[15][i]);
+//    printf("\n");
    // Inverse IP
    InvIP(state,out);
 }
 
 // DES Fault Attack
-void des_fault16_crypt(uchar in[], uchar out[], uchar key[][6])
+void des_fault16_crypt(uchar in[], uchar out[], uchar key[][6],uint faultmask)
 {
     uint state[2],idx,t;
     
@@ -224,13 +224,12 @@ void des_fault16_crypt(uchar in[], uchar out[], uchar key[][6])
     }
     // Fault attack at 16th round
 //    state[1]= state[1] ^ 0x00808081;       // Fault at position 0,7,15,23
-    state[1]= state[1] ^ 0x44444444;       // Fault at position 0,7,15,23
+//    state[1]= state[1] ^ 0x222222222;       // Fault at position 0,7,15,23
+        state[1]=state[1] ^ faultmask;
 //    state[1]= state[1] ^ 0x00000001;       // Fault at position 0,7,15,23
 
     state[0] = f(state[1],key[15]) ^ state[0];
-    printf("Des fault------------------------------------------\n");
-    printf("f(): %x\n",f(state[1],key[15]));
-    printf("L: %x   R: %x\n",state[1],state[0]);
+
     // Inverse IP
     InvIP(state,out);
 }
@@ -277,10 +276,6 @@ uint rhs_s_e_k(uint state, uchar key[])
     sbox8[SBOXBIT(lrgstate[5] & 0x3f)];
     
     
-    printf("keyin rshe--->");
-    for(int i=0;i<6;i++)
-        printf("%02x",key[i]);
-    printf("\n");
     return state;
 }
 // End of DES Fault Attack   
